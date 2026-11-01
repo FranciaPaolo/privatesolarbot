@@ -1,0 +1,8 @@
+.env
+/.vscode
+logs/*
+!logs/.gitkeep
+/venv
+/__pycache__
+/actions/__pycache__
+/logger/__pycache__
