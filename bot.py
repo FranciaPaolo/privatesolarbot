@@ -30,6 +30,7 @@ from telegram.ext import CommandHandler
 from actions.solar_action import SolarAction
 from actions.tigoapi import TigoApi
 from actions.bot_utility import BotUtility
+from actions.reset_action import reset_if_idle, reset
 from logger.log_setup import setup_logging
 
 setup_logging()
@@ -147,12 +148,6 @@ async def typing(chat: Chat):
     finally:
         task.cancel()
 
-async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    thread_id = str(update.message.chat.id)
-    await graph.checkpointer.adelete_thread(thread_id)
-    await update.message.reply_text("🧹 Memory cleared, let's start fresh.")
-
-
 builder = StateGraph(MessagesState)
 builder.add_node("agent", agent)
 builder.add_node("tools", ToolNode(TOOLS))
@@ -171,6 +166,9 @@ def transcribe(path: str) -> str:
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
     text = msg.text
+    thread_id = str(msg.chat.id)
+
+    await reset_if_idle(thread_id=thread_id, graph=graph)
 
     async with typing(msg.chat):
         if msg.voice or msg.audio:
@@ -206,6 +204,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.bot_data["graph"] = graph   # make the graph available to handlers
     only_me = filters.User(user_id=ALLOWED_USER_IDS)
 
     # Handlers
